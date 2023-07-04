@@ -1,0 +1,5 @@
+## Required config files ##
+sample_sheet: "./config/samples.csv"
+genomes_sheet: "./config/genomes.csv"
+resource_config : "./config/resources.yaml"
+
