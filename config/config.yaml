@@ -3,12 +3,13 @@ sample_sheet: "./config/samples.csv"
 resource_config : "./config/resources.yaml"
 
 ## Reference genome path ##
-merged_genome_path: "path/to/genome.fa"
+genome_path: "path/to/genome.fa"
 
 ## Host and infection accessions ##
-contigs:
-  ## Each key is a "genome" that mean cov will be calculated for. 
-  ## Value should be the contig names in the reference genome.
+coverage_groups:
+  ## Each key is a group that mean cov will be calculated for. 
+  ## Value should be the contig names in the reference genome. Should be string or list of strings.
   dmel: []
   wri: ""
   wmel: ""
+  ## You can add as many genomes as you would like
