@@ -1,5 +1,14 @@
 ## Required config files ##
 sample_sheet: "./config/samples.csv"
-genomes_sheet: "./config/genomes.csv"
 resource_config : "./config/resources.yaml"
 
+## Reference genome path ##
+merged_genome_path: "path/to/genome.fa"
+
+## Host and infection accessions ##
+contigs:
+  ## Each key is a "genome" that mean cov will be calculated for. 
+  ## Value should be the contig names in the reference genome.
+  dmel: []
+  wri: ""
+  wmel: ""
