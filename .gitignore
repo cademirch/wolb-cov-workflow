@@ -1,3 +1,4 @@
 .snakemake
 .test/logs
 .test/results
+.test/data/test_genome.fna.*

@@ -12,3 +12,8 @@ fastp:
   threads: 1
   mem_mb: 4000
   runtime: 1h
+
+bwa_mem:
+  threads: 1
+  mem_mb: 4000
+  runtime: 1h

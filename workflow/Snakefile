@@ -10,7 +10,7 @@ include: "rules/common.smk"
 rule all:
     input:
         expand(
-            "results/summary_stats/fastp/{sample}_fastp.txt",
+            "results/raw_bams/{sample}.bam",
             sample=samples["sample_id"].tolist(),
         ),
 
@@ -85,4 +85,29 @@ rule fastp:
             --out1 {output.read_1} --out2 {output.read_2} \
             --thread {threads} --detect_adapter_for_pe \
             2> {output.summary} > {log}
+        """
+
+
+rule bwa_mem:
+    input:
+        rules.index_reference.output,
+        ref=config["genome_path"],
+        read_1="results/filtered_fastqs/{sample}_R1.fq.gz",
+        read_2="results/filtered_fastqs/{sample}_R2.fq.gz",
+    output:
+        bam="results/raw_bams/{sample}.bam",
+        bam_index="results/raw_bams/{sample}.bam.bai",
+    log:
+        "logs/bwa_mem/{sample}.txt",
+    conda:
+        "envs/env.yaml"
+    threads: resource_config["bwa_mem"]["threads"]
+    resources:
+        mem_mb=resource_config["bwa_mem"]["mem_mb"],
+        runtime=resource_config["bwa_mem"]["runtime"],
+    shell:
+        """
+        bwa mem -M -t {threads} {input.ref} {input.read_1} {input.read_2} 2> {log} \
+        | samtools sort -o {output.bam} - &>> {log} \
+        && samtools index {output.bam} &>> {log}
         """
