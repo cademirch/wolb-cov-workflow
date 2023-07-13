@@ -1,3 +1,88 @@
 configfile: "config/config.yaml"
+
+
 include: "rules/common.smk"
-    
+
+
+# shell.executable("usr/bin/bash")
+
+
+rule all:
+    input:
+        expand(
+            "results/summary_stats/fastp/{sample}_fastp.txt",
+            sample=samples["sample_id"].tolist(),
+        ),
+
+
+rule index_reference:
+    input:
+        config["genome_path"],
+    output:
+        multiext(config["genome_path"], ".fai", ".bwt", ".pac", ".ann", ".amb", ".sa"),
+    log:
+        "logs/index_reference/log.txt",
+    conda:
+        "envs/env.yaml"
+    threads: resource_config["index_reference"]["threads"]
+    resources:
+        mem_mb=resource_config["index_reference"]["mem_mb"],
+        runtime=resource_config["index_reference"]["runtime"],
+    shell:
+        """
+        samtools faidx {input} &> {log}
+        bwa index {input} &>> {log}
+        """
+
+
+rule mappability:
+    input:
+        config["genome_path"],
+    output:
+        bedgraph=temp(
+            f"results/mappability/{Path(config['genome_path']).stem}.genmap.bedgraph"
+        ),
+        sorted_bedgraph="results/mappability/sorted.bg",
+        index_dir=directory("results/mappability/index"),
+        out_dir=directory("results/mappability"),
+    log:
+        "logs/mappability/log.txt",
+    params:
+        k=config["mappability"]["kmer_size"],
+        e=config["mappability"]["mismatches"],
+    conda:
+        "envs/env.yaml"
+    threads: resource_config["mappability"]["threads"]
+    resources:
+        mem_mb=resource_config["mappability"]["mem_mb"],
+        runtime=resource_config["mappability"]["runtime"],
+    shell:
+        """
+        genmap index -F {input} -I {output.index_dir} &> {log}
+        genmap map -K {params.k} -E {params.e} -I {output.index_dir} -O {output.out_dir} -bg -T {threads} -v &>> {log}
+        sort -k1,1 -k2,2n {output.bedgraph} > {output.sorted_bedgraph} 2>> {log}
+        """
+
+
+rule fastp:
+    input:
+        unpack(get_reads),
+    output:
+        read_1="results/filtered_fastqs/{sample}_R1.fq.gz",
+        read_2="results/filtered_fastqs/{sample}_R2.fq.gz",
+        summary="results/summary_stats/fastp/{sample}_fastp.txt",
+    log:
+        "logs/fastp/{sample}.txt",
+    conda:
+        "envs/env.yaml"
+    threads: resource_config["fastp"]["threads"]
+    resources:
+        mem_mb=resource_config["fastp"]["mem_mb"],
+        runtime=resource_config["fastp"]["runtime"],
+    shell:
+        """
+        fastp --in1 {input.read_1} --in2 {input.read_2} \
+            --out1 {output.read_1} --out2 {output.read_2} \
+            --thread {threads} --detect_adapter_for_pe \
+            2> {output.summary} > {log}
+        """

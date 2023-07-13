@@ -1,0 +1,14 @@
+index_reference:
+  threads: 1
+  mem_mb: 4000
+  runtime: 1h
+
+mappability:
+  threads: 1
+  mem_mb: 4000
+  runtime: 1h
+
+fastp:
+  threads: 1
+  mem_mb: 4000
+  runtime: 1h

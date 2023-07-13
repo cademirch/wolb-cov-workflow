@@ -1,0 +1,2 @@
+sample_id,read_1,read_2
+test_A1,data/test_sample_R1.fq.gz,data/test_sample_R2.fq.gz

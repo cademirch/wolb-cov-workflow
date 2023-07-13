@@ -13,3 +13,8 @@ coverage_groups:
   wri: ""
   wmel: ""
   ## You can add as many genomes as you would like
+
+## Genmap options ##
+mappability:
+  kmer_size: 150
+  mismatches: 0
