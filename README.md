@@ -1,3 +1,19 @@
+Table of Contents
+=================
+
+* [Wolbachia Coverage Workflow](#wolbachia-coverage-workflow)
+   * [Usage](#usage)
+      * [Environment Setup](#environment-setup)
+      * [Workflow Configuration](#workflow-configuration)
+         * [Reference genome](#reference-genome)
+         * [Config.yaml](#configyaml)
+            * [Coverage groups](#coverage-groups)
+         * [Resources.yaml](#resourcesyaml)
+         * [Sample sheet](#sample-sheet)
+      * [Running the workflow](#running-the-workflow)
+         * [Running locally:](#running-locally)
+         * [Running on SLURM:](#running-on-slurm)
+      * [Workflow output](#workflow-output)
 # Wolbachia Coverage Workflow
 This Snakemake workflow generates average coverage information from Illumina sequencing data.
 ## Usage
