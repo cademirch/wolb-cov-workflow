@@ -83,6 +83,7 @@ rule fastp:
         fastp --in1 {input.read_1} --in2 {input.read_2} \
             --out1 {output.read_1} --out2 {output.read_2} \
             --thread {threads} --detect_adapter_for_pe \
+            -j /dev/null -h /dev/null \
             2> {output.summary} > {log}
         """
 
