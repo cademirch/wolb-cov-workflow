@@ -1,6 +1,5 @@
 Table of Contents
 =================
-
 * [Wolbachia Coverage Workflow](#wolbachia-coverage-workflow)
    * [Usage](#usage)
       * [Environment Setup](#environment-setup)
@@ -11,8 +10,8 @@ Table of Contents
          * [Resources.yaml](#resourcesyaml)
          * [Sample sheet](#sample-sheet)
       * [Running the workflow](#running-the-workflow)
-         * [Running locally:](#running-locally)
-         * [Running on SLURM:](#running-on-slurm)
+         * [Running locally](#running-locally)
+         * [Running on SLURM](#running-on-slurm)
       * [Workflow output](#workflow-output)
 # Wolbachia Coverage Workflow
 This Snakemake workflow generates average coverage information from Illumina sequencing data.
@@ -82,12 +81,12 @@ After completing the configuration steps, the workflow is ready to be run.
 
 From the root directory of the repo and in your snakemake env:
 
-#### Running locally:
+#### Running locally
 ```
 snakemake --cores <num cores to use>
 ```
 
-#### Running on SLURM:
+#### Running on SLURM
 ```
 srun snakemake --slurm --jobs <num jobs to run in parallel> 
 ```
