@@ -17,3 +17,13 @@ bwa_mem:
   threads: 1
   mem_mb: 4000
   runtime: 1h
+
+filter_bam:
+  threads: 1
+  mem_mb: 4000
+  runtime: 1h
+
+mosdepth:
+  threads: 1
+  mem_mb: 4000
+  runtime: 1h
