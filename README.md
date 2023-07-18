@@ -82,6 +82,25 @@ After completing the configuration steps, the workflow is ready to be run.
 I recommend creating a directory to store your data and results outside of the workflow repo. This creates better separation and prevents git clutter. You can create your directory where ever you'd like and then copy the `config/` from the workflow repo there. 
 
 Example directory structure:
+```
+.
+├── wolb-cov-workflow/
+│   ├── config/
+│   │   ├── config.yaml
+│   │   ├── resources.yaml
+│   │   └── samples.csv
+│   └── workflow/
+│       ├── envs
+│       ├── rules
+│       ├── scripts
+│       └── Snakefile
+└── your-directory/
+    ├── your-data
+    └── config/
+        ├── config.yaml
+        ├── resources.yaml
+        └── samples.csv
+```
 
 
 #### Running locally
