@@ -79,16 +79,19 @@ In order to define your samples and the path to their reads, you must construct 
 ### Running the workflow
 After completing the configuration steps, the workflow is ready to be run. 
 
-From the root directory of the repo and in your snakemake env:
+I recommend creating a directory to store your data and results outside of the workflow repo. This creates better separation and prevents git clutter. You can create your directory where ever you'd like and then copy the `config/` from the workflow repo there. 
+
+Example directory structure:
+
 
 #### Running locally
 ```
-snakemake --cores <num cores to use>
+snakemake -s <path/to/wolb-cov-workflow/workflow/Snakefile -d <path/to/your/data/directory> --cores <num cores to use>
 ```
 
 #### Running on SLURM
 ```
-srun snakemake --slurm --jobs <num jobs to run in parallel> 
+srun snakemake -s <path/to/wolb-cov-workflow/workflow/Snakefile -d <path/to/your/data/directory> --slurm --jobs <num jobs to run in parallel> 
 ```
 
 ### Workflow output
