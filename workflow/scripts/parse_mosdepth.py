@@ -39,12 +39,12 @@ def main():
     outfile = snakemake.output["csv"]  # noqa: F821
 
     with open(outfile, "w") as out:
-        print("sample_id", groups.keys(), sep=",", file=out)
+        print("sample_id", *groups.keys(), sep=",", file=out)
         for file in infiles:
             file = Path(file)
             sample_id = file.name.replace(".mosdepth.summary.txt", "")
             cov_dict = parse(file, groups)
-            print(sample_id, cov_dict.values(), sep=",", file=out)
+            print(sample_id, *cov_dict.values(), sep=",", file=out)
 
 
 if __name__ == "__main__":
