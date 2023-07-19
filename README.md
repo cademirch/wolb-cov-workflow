@@ -105,12 +105,12 @@ Example directory structure:
 
 #### Running locally
 ```
-snakemake -s <path/to/wolb-cov-workflow/workflow/Snakefile -d <path/to/your/data/directory> --cores <num cores to use>
+snakemake -s <path/to/wolb-cov-workflow/workflow/Snakefile -d <path/to/your/data/directory> --use-conda --cores <num cores to use>
 ```
 
 #### Running on SLURM
 ```
-srun snakemake -s <path/to/wolb-cov-workflow/workflow/Snakefile -d <path/to/your/data/directory> --slurm --jobs <num jobs to run in parallel> 
+srun snakemake -s <path/to/wolb-cov-workflow/workflow/Snakefile -d <path/to/your/data/directory> --use-conda --slurm --jobs <num jobs to run in parallel> 
 ```
 
 ### Workflow output
