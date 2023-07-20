@@ -65,6 +65,17 @@ In this example, the average coverage coverage across the 5 dmel autosomes will 
 
 **It is important to check that the contigs you specify exist in the reference genome.**
 
+##### Roles
+We use roles to define host/symbiont(s) relationships for titer calculation. Your role definitions must have only one host and as many symbionts as you'd like. The names of each must match the names of your coverage groups. Continuing our example:
+```yaml
+# config.yaml
+
+## Roles to define host and symbiont relationships. Only one host is allowed.
+roles:
+  host: "dmel"
+  symbionts: ["wmel","wri"]
+```
+
 #### Resources.yaml
 The `resource_config.yaml` specifes the computational resources to be used by each rule. It is set with reasonable defaults for the phoenix.prism cluster, but should be checked and adjusted if running elsewhere. For more info about specifying resources see [Snakemake's documentation](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#resources).
 
@@ -114,12 +125,14 @@ srun snakemake -s <path/to/wolb-cov-workflow/workflow/Snakefile -d <path/to/your
 ```
 
 ### Workflow output
-The workflow produces a CSV file reporting the average coverage in each `coverage_group` specified in the config file. The output file has the following fields:
+The workflow produces a CSV file reporting the mean depth in each `coverage_group` specified in the config file. As well as the titer of each symbiont denoted in `roles`. The output file has the following fields:
 | Field | Description | Type |
 | ---- | -------------| ------ |
 | `sample_id` | Name of the sample| `str` |
-| `Name of coverage_group 1` | Average coverage of coverage_group 1| `float` |
-| `Name of coverage_group N` | Average coverage of coverage_group N| `float` |
+| `Name of coverage_group 1` | Mean depth of coverage_group 1| `float` |
+| `Name of coverage_group N` | Mean depth of coverage_group N| `float` |
+| `Symbiont_1_titer` | Titer of Symbiont 1| `float` |
+| `Symbiont_N_titer` | Titer of Symbiont N| `float` |
 
 
 
