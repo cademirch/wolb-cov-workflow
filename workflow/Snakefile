@@ -171,5 +171,6 @@ rule create_cov_csv:
         csv="results/coverages.csv",
     params:
         groups=config["coverage_groups"],
+        roles=config["roles"],
     script:
         "scripts/parse_mosdepth.py"

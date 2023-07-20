@@ -15,6 +15,12 @@ coverage_groups:
   wmel: [""]
   ## You can add as many genomes as you would like
 
+## Roles to define host and symbiont relationships. Only one host is allowed.
+roles:
+  host: "dmel"
+  symbionts: ["wmel","wri"]
+  
+
 ## mappability options ##
 mappability:
   kmer_size: 150
