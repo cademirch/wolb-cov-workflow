@@ -9,6 +9,7 @@ rule all:
         csv="results/coverages.csv",
 
 
+
 rule index_reference:
     input:
         config["genome_path"],
@@ -111,12 +112,30 @@ rule bwa_mem:
         samtools sort -o {output.bam} - &>> {log} \
         && samtools index {output.bam} &>> {log}
         """
-
-
-rule filter_bam:
+rule dedup:
     input:
         bam="results/bams/raw/{sample}.bam",
         bam_index="results/bams/raw/{sample}.bam.bai",
+    output:
+        bam="results/bams/dedup/{sample}.bam",
+        bam_index="results/bams/dedup/{sample}.bam.bai",
+    log:
+        "logs/dedup/{sample}.txt"
+    conda:
+        "envs/env.yaml"
+    threads: resource_config["dedup"]["threads"]
+    resources:
+        mem_mb=resource_config["dedup"]["mem_mb"],
+        runtime=resource_config["dedup"]["runtime"],
+    shell:
+        """
+        sambamba markdup -t {threads} {input.bam} {output.bam} 2> {log} && samtools index {output.bam} &>> {log}
+        """
+
+rule filter_bam:
+    input:
+        bam="results/bams/dedup/{sample}.bam",
+        bam_index="results/bams/dedup/{sample}.bam.bai",
     output:
         bam="results/bams/filtered/{sample}.bam",
         bam_index="results/bams/filtered/{sample}.bam.bai",
@@ -160,6 +179,18 @@ rule mosdepth:
         mosdepth --by {input.bed} {params.prefix} {input.bam}
         """
 
+rule flagstat:
+    input:
+        bam="results/bams/dedup/{sample}.bam",
+        bam_index="results/bams/dedup/{sample}.bam.bai",
+    output:
+        "results/bams/flagstat/{sample}_algnstats.txt"
+    conda:
+        "envs/env.yaml"
+    shell:
+        """
+        samtools flagstat -O tsv {input.bam} > {output}
+        """
 
 rule create_cov_csv:
     input:

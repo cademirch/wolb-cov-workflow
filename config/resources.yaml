@@ -18,6 +18,11 @@ bwa_mem:
   mem_mb: 4000
   runtime: 1h
 
+dedup:
+  threads: 1
+  mem_mb: 4000
+  runtime: 1h
+
 filter_bam:
   threads: 1
   mem_mb: 4000
