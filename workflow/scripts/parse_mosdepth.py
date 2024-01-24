@@ -2,7 +2,52 @@ import pandas as pd
 from pathlib import Path
 
 
-def parse(file: Path, groups: dict[str : list[str]]) -> dict[str : str | str : float]:
+def parse_flagstat(flagstat_file: Path) -> dict:
+    # Initialize variables to store mapped reads and duplicates
+    mapped_reads = None
+    duplicates = None
+    total_reads = None
+
+    try:
+        # Open the flagstat file for reading
+        with open(flagstat_file, "r") as file:
+            # Read the lines from the file
+            lines = file.readlines()
+
+            # Loop through each line to find mapped reads and duplicates
+            for line in lines:
+                if "total" in line:
+                    # Extract the number of total reads
+                    total_reads = int(line.split()[0])
+                elif "mapped" in line:
+                    # Extract the number of mapped reads
+                    mapped_reads = int(line.split()[0])
+                elif "duplicates" in line:
+                    # Extract the number of duplicates
+                    duplicates = int(line.split()[0])
+
+                # Break the loop if all values are found
+                if all(
+                    [x is not None for x in (mapped_reads, duplicates, total_reads)]
+                ):
+                    break
+
+    except FileNotFoundError:
+        print("File not found")
+
+    # Return the extracted information as a dictionary
+    return {
+        "total_reads": total_reads,
+        "mapped_reads": mapped_reads,
+        "duplicates": duplicates,
+    }
+
+
+def parse_depth(
+    file: Path,
+    groups: dict[str : list[str]],
+    flagstat_files: list[Path],
+) -> dict[str : str | str : float]:
     """
     Parses mosdepth summary file. Reports mean depth for groups described in groups arg.
 
@@ -36,6 +81,12 @@ def parse(file: Path, groups: dict[str : list[str]]) -> dict[str : str | str : f
     # Divide each group by number of contigs
     for group, contigs in groups.items():
         out[group] = out[group] / len(contigs)
+
+    flagstat_file = Path([f for f in flagstat_files if sample_id in f][0])
+    flagstats = parse_flagstat(flagstat_file)
+
+    out.update(flagstats)
+
     return out
 
 
@@ -60,15 +111,15 @@ def create_output(
 def main():
     groups = snakemake.params["groups"]  # noqa: F821
     roles = snakemake.params["roles"]  # noqa: F821
-    infiles = snakemake.input  # noqa: F821
+    depths = snakemake.input.depths  # noqa: F821
+    flagstat_files = snakemake.input.stats  # noqa: F821
     outfile = Path(snakemake.output["csv"])  # noqa: F821
-    depths = []
-
-    for file in infiles:
+    dicts = []
+    for file in depths:
         file = Path(file)
-        depths.append(parse(file, groups))
+        dicts.append(parse_depth(file, groups, flagstat_files))
 
-    df = pd.DataFrame(depths)
+    df = pd.DataFrame(dicts)
     create_output(df, roles, outfile)
 
 
