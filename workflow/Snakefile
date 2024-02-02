@@ -2,11 +2,47 @@ configfile: "config/config.yaml"
 
 
 include: "rules/common.smk"
+include: "rules/recomb.smk"
+include: "rules/octomom.smk"
 
 
 rule all:
     input:
         csv="results/coverages.csv",
+        mom="results/depths.csv",
+
+
+rule combine_csv:
+    input:
+        csv=expand("results/csv/coverages_{e}.csv", e=range(5)),
+        octomom=get_octomom,
+    output:
+        csv="results/coverages.csv",
+        mom="results/depths.csv",
+    run:
+        dataframes = []
+        for csv_file in input.csv:
+            e_val = csv_file.strip(".csv").split("_")[1]
+            df = pd.read_csv(csv_file)
+            df["e_val"] = e_val
+            dataframes.append(df)
+        result = pd.concat(dataframes, ignore_index=True)
+        result.to_csv(output.csv, index=False)
+
+        dfs = []
+        for f in input.octomom:
+            sample = Path(f).name.strip(".regions.bed.gz")
+            df = pd.read_csv(
+                f,
+                sep="\t",
+                compression="infer",
+                header=None,
+                names=["chrom", "start", "end", "value"],
+            )
+            df["sample_name"] = sample
+            dfs.append(df)
+        combined = pd.concat(dfs)
+        combined.to_csv(output.mom, index=False)
 
 
 rule index_reference:
@@ -29,23 +65,40 @@ rule index_reference:
         """
 
 
-rule mappability:
+rule mappability_index:
     input:
         config["genome_path"],
     output:
-        bedgraph=temp(
-            f"results/mappability/{Path(config['genome_path']).stem}.genmap.bedgraph"
-        ),
-        sorted_bedgraph="results/mappability/sorted.bg",
-        min_bed=f"results/mappability/min_{config['mappability']['score_cutoff']}_map.bed",
         index_dir=directory("results/mappability/index"),
-        out_dir=directory("results/mappability"),
     log:
-        "logs/mappability/log.txt",
+        "logs/mappability_index/log.txt",
+    conda:
+        "envs/env.yaml"
+    resources:
+        mem_mb=resource_config["mappability"]["mem_mb"],
+        runtime=resource_config["mappability"]["runtime"],
+    shell:
+        """
+        genmap index -F {input} -I {output.index_dir} &> {log}
+        """
+
+
+rule mappability:
+    input:
+        index_dir="results/mappability/index",
+    output:
+        bedgraph=temp(
+            f"results/mappability/{{e}}/{Path(config['genome_path']).stem}.genmap.bedgraph"
+        ),
+        sorted_bedgraph="results/mappability/{e}/sorted.bg",
+        min_bed=f"results/mappability/{{e}}/min_{config['mappability']['score_cutoff']}_map.bed",
+    log:
+        "logs/mappability/{e}/log.txt",
     params:
         k=config["mappability"]["kmer_size"],
-        e=config["mappability"]["mismatches"],
+        e="{e}",
         cutoff=config["mappability"]["score_cutoff"],
+        out_dir=directory("results/mappability/{e}"),
     conda:
         "envs/env.yaml"
     threads: resource_config["mappability"]["threads"]
@@ -54,12 +107,24 @@ rule mappability:
         runtime=resource_config["mappability"]["runtime"],
     shell:
         """
-        genmap index -F {input} -I {output.index_dir} &> {log}
-        genmap map -K {params.k} -E {params.e} -I {output.index_dir} -O {output.out_dir} \
+        genmap map -K {params.k} -E {params.e} -I {input.index_dir} -O {params.out_dir} \
             -bg -T {threads} -v &>> {log}
         sort -k1,1 -k2,2n {output.bedgraph} > {output.sorted_bedgraph} 2>> {log}
         awk 'BEGIN{{OFS="\\t";FS="\\t"}} {{ if($4>={params.cutoff}) print $1,$2,$3 }}' \
             {output.sorted_bedgraph} > {output.min_bed}
+        """
+
+
+rule merge_reads:
+    input:
+        unpack(get_reads_to_merge),
+    output:
+        read_1="results/merged_fastqs/{sample}_R1.fq.gz",
+        read_2="results/merged_fastqs/{sample}_R2.fq.gz",
+    shell:
+        """
+        cat {input.read_1} > {output.read_1}
+        cat {input.read_2} > {output.read_2}
         """
 
 
@@ -136,8 +201,8 @@ rule dedup:
 
 rule filter_bam:
     input:
-        bam="results/bams/dedup/{sample}.bam",
-        bam_index="results/bams/dedup/{sample}.bam.bai",
+        bam=ancient("results/bams/dedup/{sample}.bam"),
+        bam_index=ancient("results/bams/dedup/{sample}.bam.bai"),
     output:
         bam="results/bams/filtered/{sample}.bam",
         bam_index="results/bams/filtered/{sample}.bam.bai",
@@ -163,11 +228,11 @@ rule mosdepth:
     input:
         bam="results/bams/filtered/{sample}.bam",
         bam_index="results/bams/filtered/{sample}.bam.bai",
-        bed=rules.mappability.output.min_bed,
+        bed=f"results/mappability/{{e}}/min_{config['mappability']['score_cutoff']}_map.bed",
     output:
-        summary="results/depths/{sample}.mosdepth.summary.txt",
+        summary="results/depths/{e}/{sample}.mosdepth.summary.txt",
     log:
-        "logs/mosdepth/{sample}.txt",
+        "logs/mosdepth/{e}/{sample}.txt",
     params:
         prefix=lambda wc, output: output[0].replace(".mosdepth.summary.txt", ""),
     conda:
@@ -199,15 +264,19 @@ rule flagstat:
 rule create_cov_csv:
     input:
         depths=expand(
-            "results/depths/{sample}.mosdepth.summary.txt",
-            sample=samples["sample_id"].tolist(),
+            "results/depths/{{e}}/{sample}.mosdepth.summary.txt",
+            sample=samples["seqID"].tolist(),
         ),
-        stats=expand(
+        dedup_stats=expand(
             "results/bams/flagstat/{sample}_algnstats.txt",
-            sample=samples["sample_id"].tolist(),
+            sample=samples["seqID"].tolist(),
+        ),
+        recomb_stats=expand(
+            "results/recomb/chimeras/final/{{e}}/{sample}_algnstats.txt",
+            sample=samples["seqID"].tolist(),
         ),
     output:
-        csv="results/coverages.csv",
+        csv="results/csv/coverages_{e}.csv",
     params:
         groups=config["coverage_groups"],
         roles=config["roles"],

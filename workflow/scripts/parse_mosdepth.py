@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 
 
-def parse_flagstat(flagstat_file: Path) -> dict:
+def parse_flagstat(flagstat_file: Path, recomb: bool = False) -> dict:
     # Initialize variables to store mapped reads and duplicates
     mapped_reads = None
     duplicates = None
@@ -36,6 +36,8 @@ def parse_flagstat(flagstat_file: Path) -> dict:
         print("File not found")
 
     # Return the extracted information as a dictionary
+    if recomb:
+        return {"recomb_reads": total_reads}
     return {
         "total_reads": total_reads,
         "mapped_reads": mapped_reads,
@@ -47,6 +49,7 @@ def parse_depth(
     file: Path,
     groups: dict[str : list[str]],
     flagstat_files: list[Path],
+    recomb_flagstat_files: list[Path],
 ) -> dict[str : str | str : float]:
     """
     Parses mosdepth summary file. Reports mean depth for groups described in groups arg.
@@ -85,7 +88,11 @@ def parse_depth(
     flagstat_file = Path([f for f in flagstat_files if sample_id in f][0])
     flagstats = parse_flagstat(flagstat_file)
 
+    recomb_flagstat_file = Path([f for f in recomb_flagstat_files if sample_id in f][0])
+    recomb_flagstats = parse_flagstat(recomb_flagstat_file, recomb=True)
+
     out.update(flagstats)
+    out.update(recomb_flagstats)
 
     return out
 
@@ -112,12 +119,13 @@ def main():
     groups = snakemake.params["groups"]  # noqa: F821
     roles = snakemake.params["roles"]  # noqa: F821
     depths = snakemake.input.depths  # noqa: F821
-    flagstat_files = snakemake.input.stats  # noqa: F821
+    flagstat_files = snakemake.input.dedup_stats  # noqa: F821
+    recomb_flagstat_files = snakemake.input.recomb_stats  # noqa: F821
     outfile = Path(snakemake.output["csv"])  # noqa: F821
     dicts = []
     for file in depths:
         file = Path(file)
-        dicts.append(parse_depth(file, groups, flagstat_files))
+        dicts.append(parse_depth(file, groups, flagstat_files, recomb_flagstat_files))
 
     df = pd.DataFrame(dicts)
     create_output(df, roles, outfile)
