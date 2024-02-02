@@ -9,16 +9,16 @@ include: "rules/octomom.smk"
 rule all:
     input:
         csv="results/coverages.csv",
-        mom="results/depths.csv",
+        # mom="results/depths.csv",
 
 
 rule combine_csv:
     input:
         csv=expand("results/csv/coverages_{e}.csv", e=range(5)),
-        octomom=get_octomom,
+        # octomom=get_octomom,
     output:
         csv="results/coverages.csv",
-        mom="results/depths.csv",
+        # mom="results/depths.csv",
     run:
         dataframes = []
         for csv_file in input.csv:
@@ -29,20 +29,20 @@ rule combine_csv:
         result = pd.concat(dataframes, ignore_index=True)
         result.to_csv(output.csv, index=False)
 
-        dfs = []
-        for f in input.octomom:
-            sample = Path(f).name.strip(".regions.bed.gz")
-            df = pd.read_csv(
-                f,
-                sep="\t",
-                compression="infer",
-                header=None,
-                names=["chrom", "start", "end", "value"],
-            )
-            df["sample_name"] = sample
-            dfs.append(df)
-        combined = pd.concat(dfs)
-        combined.to_csv(output.mom, index=False)
+        # dfs = []
+        # for f in input.octomom:
+        #     sample = Path(f).name.strip(".regions.bed.gz")
+        #     df = pd.read_csv(
+        #         f,
+        #         sep="\t",
+        #         compression="infer",
+        #         header=None,
+        #         names=["chrom", "start", "end", "value"],
+        #     )
+        #     df["sample_name"] = sample
+        #     dfs.append(df)
+        # combined = pd.concat(dfs)
+        # combined.to_csv(output.mom, index=False)
 
 
 rule index_reference:
