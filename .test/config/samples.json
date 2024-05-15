@@ -1,0 +1,14 @@
+[
+    {
+        "SampleID": "test_A1",
+        "Lane": 1,
+        "sequencing_order_id": "123",
+        "read1": "data/test_sample_R1.fq.gz",
+        "read2": "data/test_sample_R2.fq.gz",
+        "host": "dmel",
+        "infection": [
+            "wmel",
+            "wri"
+        ]
+    }
+]

@@ -2,125 +2,38 @@ configfile: "config/config.yaml"
 
 
 include: "rules/common.smk"
-include: "rules/recomb.smk"
-include: "rules/octomom.smk"
+include: "rules/reference.smk"
 
 
 rule all:
     input:
-        csv="results/coverages.csv",
-        # mom="results/depths.csv",
+        csv=expand("results/csv/coverages_{e}.csv", e=config["mappability"]["e_vals"])
 
-
-rule combine_csv:
+rule create_cov_csv:
     input:
-        csv=expand("results/csv/coverages_{e}.csv", e=range(5)),
-        # octomom=get_octomom,
-    output:
-        csv="results/coverages.csv",
-        # mom="results/depths.csv",
-    run:
-        dataframes = []
-        for csv_file in input.csv:
-            e_val = csv_file.strip(".csv").split("_")[1]
-            df = pd.read_csv(csv_file)
-            df["e_val"] = e_val
-            dataframes.append(df)
-        result = pd.concat(dataframes, ignore_index=True)
-        result.to_csv(output.csv, index=False)
-
-        # dfs = []
-        # for f in input.octomom:
-        #     sample = Path(f).name.strip(".regions.bed.gz")
-        #     df = pd.read_csv(
-        #         f,
-        #         sep="\t",
-        #         compression="infer",
-        #         header=None,
-        #         names=["chrom", "start", "end", "value"],
-        #     )
-        #     df["sample_name"] = sample
-        #     dfs.append(df)
-        # combined = pd.concat(dfs)
-        # combined.to_csv(output.mom, index=False)
-
-
-rule index_reference:
-    input:
-        config["genome_path"],
-    output:
-        multiext(config["genome_path"], ".fai", ".bwt", ".pac", ".ann", ".amb", ".sa"),
-    log:
-        "logs/index_reference/log.txt",
-    conda:
-        "envs/env.yaml"
-    threads: resource_config["index_reference"]["threads"]
-    resources:
-        mem_mb=resource_config["index_reference"]["mem_mb"],
-        runtime=resource_config["index_reference"]["runtime"],
-    shell:
-        """
-        samtools faidx {input} &> {log}
-        bwa index {input} &>> {log}
-        """
-
-
-rule mappability_index:
-    input:
-        config["genome_path"],
-    output:
-        index_dir=directory("results/mappability/index"),
-    log:
-        "logs/mappability_index/log.txt",
-    conda:
-        "envs/env.yaml"
-    resources:
-        mem_mb=resource_config["mappability"]["mem_mb"],
-        runtime=resource_config["mappability"]["runtime"],
-    shell:
-        """
-        genmap index -F {input} -I {output.index_dir} &> {log}
-        """
-
-
-rule mappability:
-    input:
-        index_dir="results/mappability/index",
-    output:
-        bedgraph=temp(
-            f"results/mappability/{{e}}/{Path(config['genome_path']).stem}.genmap.bedgraph"
+        depths=expand(
+            "results/depths/{{e}}/{sample}.mosdepth.summary.txt",
+            sample=sampleids,
         ),
-        sorted_bedgraph="results/mappability/{e}/sorted.bg",
-        min_bed=f"results/mappability/{{e}}/min_{config['mappability']['score_cutoff']}_map.bed",
-    log:
-        "logs/mappability/{e}/log.txt",
+        dedup_stats=expand(
+            "results/bams/flagstat/{sample}_algnstats.txt",
+            sample=sampleids,
+        ),
+    output:
+        csv="results/csv/coverages_{e}.csv",
     params:
-        k=config["mappability"]["kmer_size"],
-        e="{e}",
-        cutoff=config["mappability"]["score_cutoff"],
-        out_dir=directory("results/mappability/{e}"),
-    conda:
-        "envs/env.yaml"
-    threads: resource_config["mappability"]["threads"]
-    resources:
-        mem_mb=resource_config["mappability"]["mem_mb"],
-        runtime=resource_config["mappability"]["runtime"],
-    shell:
-        """
-        genmap map -K {params.k} -E {params.e} -I {input.index_dir} -O {params.out_dir} \
-            -bg -T {threads} -v &>> {log}
-        sort -k1,1 -k2,2n {output.bedgraph} > {output.sorted_bedgraph} 2>> {log}
-        awk 'BEGIN{{OFS="\\t";FS="\\t"}} {{ if($4>={params.cutoff}) print $1,$2,$3 }}' \
-            {output.sorted_bedgraph} > {output.min_bed}
-        """
-
+        groups=config["coverage_groups"],
+        roles=config["roles"],
+        sample_sheet=config["sample_sheet"]
+    script:
+        "scripts/parse_mosdepth.py"
 
 rule merge_reads:
     input:
         unpack(get_reads_to_merge),
     output:
-        read_1="results/merged_fastqs/{sample}_R1.fq.gz",
-        read_2="results/merged_fastqs/{sample}_R2.fq.gz",
+        read_1=temp("results/merged_fastqs/{sample}_R1.fq.gz"),
+        read_2=temp("results/merged_fastqs/{sample}_R2.fq.gz"),
     shell:
         """
         cat {input.read_1} > {output.read_1}
@@ -132,17 +45,13 @@ rule fastp:
     input:
         unpack(get_reads),
     output:
-        read_1="results/filtered_fastqs/{sample}_R1.fq.gz",
-        read_2="results/filtered_fastqs/{sample}_R2.fq.gz",
+        read_1=temp("results/filtered_fastqs/{sample}_R1.fq.gz"),
+        read_2=temp("results/filtered_fastqs/{sample}_R2.fq.gz"),
         summary="results/summary_stats/fastp/{sample}_fastp.txt",
     log:
         "logs/fastp/{sample}.txt",
     conda:
         "envs/env.yaml"
-    threads: resource_config["fastp"]["threads"]
-    resources:
-        mem_mb=resource_config["fastp"]["mem_mb"],
-        runtime=resource_config["fastp"]["runtime"],
     shell:
         """
         fastp --in1 {input.read_1} --in2 {input.read_2} \
@@ -155,21 +64,16 @@ rule fastp:
 
 rule bwa_mem:
     input:
-        rules.index_reference.output,
-        ref=config["genome_path"],
+        unpack(get_combined_genome),
         read_1="results/filtered_fastqs/{sample}_R1.fq.gz",
         read_2="results/filtered_fastqs/{sample}_R2.fq.gz",
     output:
-        bam="results/bams/raw/{sample}.bam",
-        bam_index="results/bams/raw/{sample}.bam.bai",
+        bam=temp("results/bams/raw/{sample}.bam"),
+        bam_index=temp("results/bams/raw/{sample}.bam.bai"),
     log:
         "logs/bwa_mem/{sample}.txt",
     conda:
         "envs/env.yaml"
-    threads: resource_config["bwa_mem"]["threads"]
-    resources:
-        mem_mb=resource_config["bwa_mem"]["mem_mb"],
-        runtime=resource_config["bwa_mem"]["runtime"],
     shell:
         """
         bwa mem -M -t {threads} {input.ref} {input.read_1} {input.read_2} 2> {log} | \
@@ -189,10 +93,6 @@ rule dedup:
         "logs/dedup/{sample}.txt",
     conda:
         "envs/env.yaml"
-    threads: resource_config["dedup"]["threads"]
-    resources:
-        mem_mb=resource_config["dedup"]["mem_mb"],
-        runtime=resource_config["dedup"]["runtime"],
     shell:
         """
         sambamba markdup -p -t {threads} {input.bam} {output.bam} 2> {log} && samtools index {output.bam} &>> {log}
@@ -204,18 +104,14 @@ rule filter_bam:
         bam=ancient("results/bams/dedup/{sample}.bam"),
         bam_index=ancient("results/bams/dedup/{sample}.bam.bai"),
     output:
-        bam="results/bams/filtered/{sample}.bam",
-        bam_index="results/bams/filtered/{sample}.bam.bai",
+        bam=temp("results/bams/filtered/{sample}.bam"),
+        bam_index=temp("results/bams/filtered/{sample}.bam.bai"),
     log:
         "logs/filter_bam/{sample}.txt",
     params:
         min_mapq=config["filter_bam"]["min_mapq"],
     conda:
         "envs/env.yaml"
-    threads: resource_config["filter_bam"]["threads"]
-    resources:
-        mem_mb=resource_config["filter_bam"]["mem_mb"],
-        runtime=resource_config["filter_bam"]["runtime"],
     shell:
         """
         samtools view -h -q{params.min_mapq} {input.bam} 2> {log} | \
@@ -228,22 +124,19 @@ rule mosdepth:
     input:
         bam="results/bams/filtered/{sample}.bam",
         bam_index="results/bams/filtered/{sample}.bam.bai",
-        bed=f"results/mappability/{{e}}/min_{config['mappability']['score_cutoff']}_map.bed",
+        bed=get_mappability_bed
     output:
         summary="results/depths/{e}/{sample}.mosdepth.summary.txt",
+    shadow: "minimal"
     log:
         "logs/mosdepth/{e}/{sample}.txt",
     params:
         prefix=lambda wc, output: output[0].replace(".mosdepth.summary.txt", ""),
     conda:
         "envs/env.yaml"
-    threads: resource_config["mosdepth"]["threads"]
-    resources:
-        mem_mb=resource_config["mosdepth"]["mem_mb"],
-        runtime=resource_config["mosdepth"]["runtime"],
     shell:
         """
-        mosdepth --by {input.bed} -F 1024 {params.prefix} {input.bam}
+        mosdepth --by {input.bed} -F 1024 -n {params.prefix} {input.bam}
         """
 
 
@@ -261,24 +154,4 @@ rule flagstat:
         """
 
 
-rule create_cov_csv:
-    input:
-        depths=expand(
-            "results/depths/{{e}}/{sample}.mosdepth.summary.txt",
-            sample=samples["seqID"].tolist(),
-        ),
-        dedup_stats=expand(
-            "results/bams/flagstat/{sample}_algnstats.txt",
-            sample=samples["seqID"].tolist(),
-        ),
-        recomb_stats=expand(
-            "results/recomb/chimeras/final/{{e}}/{sample}_algnstats.txt",
-            sample=samples["seqID"].tolist(),
-        ),
-    output:
-        csv="results/csv/coverages_{e}.csv",
-    params:
-        groups=config["coverage_groups"],
-        roles=config["roles"],
-    script:
-        "scripts/parse_mosdepth.py"
+

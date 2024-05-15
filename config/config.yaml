@@ -1,12 +1,17 @@
 ## Required config files ##
-sample_sheet: "./config/samples.csv"
-resource_config : "./config/resources.yaml"
+sample_sheet: "./config/workflow.json"
+
 
 ## Reference genome path ##
-genome_path: "path/to/genome.fa"
+genome_paths:
+  wmel: "/private/groups/russelllab/cade/wolb-mix/genome/wmel.fna"
+  wri: "/private/groups/russelllab/cade/wolb-mix/genome/wri.fna"
+  dmel: "/private/groups/russelllab/cade/wolb-mix/genome/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna"
+  wwil: "/private/groups/russelllab/cade/wolb-mix/genome/wWil_Nanopore_assembly.fasta"
+  dsim: "/private/groups/russelllab/cade/wolb-mix/genome/GCF_016746395.2_Prin_Dsim_3.1_genomic.fna"
 
 ## Host and infection accessions ##
-coverage_groups:
+
   ## Each key is a group that mean depth will be calculated for. 
   ## Value should be the contig names in the reference genome. Must be list of strings.
   ## Add host/symbiont key to denote role for titer calculations
@@ -19,16 +24,20 @@ coverage_groups:
   wri: ["NC_012416.1"]
     
   wmel: ["NC_002978.6"]
+
+  dsim: ["NC_052520.2", "NC_052521.2", "NC_052522.2", "NC_052523.2", "NC_052524.2"]
+
+  wwil: ["wWil_Wolbachia_chromosome"]
   ## You can add as many genomes as you would like
 
-## Roles to define host and symbiont relationships. Only one host is allowed.
 roles:
-  host: "dmel"
-  symbionts: ["wmel", "wri"]
+  hosts: ["dmel", "dsim"]
+  symbionts: ["wmel", "wri", "wwil"]
   
 
 ## Genmap options ##
 mappability:
+  e_vals: [0]
   kmer_size: 150
   mismatches: 0
   score_cutoff: 1

@@ -2,3 +2,6 @@
 .test/logs
 .test/results
 .test/data/test_genome.fna.*
+data
+results
+logs

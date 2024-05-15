@@ -1,0 +1,26 @@
+executor: slurm
+use-conda: True
+jobs: 100 # Have up to N jobs submitted at any given time
+latency-wait: 100 # Wait N seconds for output files due to latency
+retries: 0 # Retry jobs N times.
+max-jobs-per-second: 5
+max-status-checks-per-second: 5
+
+# These resources will be applied to all rules. Can be overriden on a per-rule basis below.
+default-resources:
+  mem_mb: attempt * 16000
+  mem_mb_reduced: (attempt * 2000) * 0.9 # Mem allocated to java for GATK rules (tries to prevent OOM errors)
+  slurm_partition: "medium"
+  slurm_account: # Same as sbatch -A. Not all clusters use this.
+  runtime: 600 # In minutes
+
+set-threads:
+  fastp: 6
+  bwa_mem: 32
+  dedup: 16
+
+set-resources:
+  bwa_mem:
+    mem_mb: 32000
+  dedup:
+    mem_mb: 32000

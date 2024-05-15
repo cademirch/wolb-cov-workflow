@@ -7,7 +7,6 @@ Table of Contents
          * [Reference genome](#reference-genome)
          * [Config.yaml](#configyaml)
             * [Coverage groups](#coverage-groups)
-         * [Resources.yaml](#resourcesyaml)
          * [Sample sheet](#sample-sheet)
       * [Running the workflow](#running-the-workflow)
          * [Running locally](#running-locally)
@@ -41,14 +40,15 @@ $ cat genome1.fa genome2.fa genome3.fa > merged.fa
 The file `config/config.yaml` controls the core workflow options. It contains the following fields:
 | Option | Description | Type |
 | ---- | -------------| ------ |
-| `sample_sheet` | Path to CSV sample sheet.| `str` |
-| `resource_config` | Path to resource.yaml.| `str` |
-| `genome_path` | Path to merged genome. MUST be uncompressed.| `str` |
-| `coverage_groups` | Each subkey represents a coverage group, value must be list of contigs belonging to that group. See below for more info.| `dict[str:list[str]]` |
-| `kmer_size` | Kmer size for genmap (-k).| `int` |
-| `mismatches` | Allowed mismatches for genmap (-e).| `int` |
-| `score_cutoff` | Minimum mappability score for coverage calculation.| `int` |
-| `min_mapq` | Minimum mapq for filtering alignments.| `int` |
+| sample_sheet | Path to CSV sample sheet.| `str` |
+| resource_config | Path to resource.yaml.| `str` |
+| genome_path | Path to merged genome. MUST be uncompressed.| `str` |
+| coverage_groups | Each subkey represents a coverage group, value must be list of contigs belonging to that group. See below for more info.| `dict[str:list[str]]` |
+| roles | Defines host and symbiont relationships. Values must match keys from `coverage_groups`.| `dict[str:list[str]]` |
+| kmer_size | Kmer size for genmap (-k).| `int` |
+| e_vals | Allowed mismatches for genmap (-e).| `list[int]` |
+| score_cutoff | Minimum mappability score for coverage calculation.| `int` |
+| min_mapq | Minimum mapq for filtering alignments.| `int` |
 
 ##### Coverage groups
 We define coverage groups as contig(s) in the reference genome that we want to calculate the average coverage of. For example, we typically only care about the dmel6 autosomes in our analysis, so we would specify that like so:
@@ -72,20 +72,23 @@ We use roles to define host/symbiont(s) relationships for titer calculation. You
 
 ## Roles to define host and symbiont relationships. Only one host is allowed.
 roles:
-  host: "dmel"
+  hosts: ["dmel", "dsim"]
   symbionts: ["wmel","wri"]
 ```
 
-#### Resources.yaml
-The `resource_config.yaml` specifes the computational resources to be used by each rule. It is set with reasonable defaults for the phoenix.prism cluster, but should be checked and adjusted if running elsewhere. For more info about specifying resources see [Snakemake's documentation](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#resources).
-
 #### Sample sheet
-In order to define your samples and the path to their reads, you must construct CSV file with the following fields:
-| Field | Description | Type |
-| ---- | -------------| ------ |
-| `sample_id` | Name of the sample (must be unique).| `str` |
-| `read_1` | Path to read_1.| `str` |
-| `read_2` | Path to read_2.| `str` |
+In order to define your samples and the path to their reads, you must construct JSON file with the following fields:
+| Field                | Description                                              | Type                |
+|----------------------|----------------------------------------------------------|---------------------|
+| SampleID             | Unique identifier for the sample                         | `str`                 |
+| Lane                 | Sequencing lane number                                   | `int`                 |
+| sequencing_order_id  | Identifier for the sequencing order                      | `str`                 |
+| read1                | Path to the first sequencing read file                   | `str`                 |
+| read2                | Path to the second sequencing read file                  | `str`                 |
+| host                 | Host genome name                                         | `str`                 |
+| infection            | List of infections found in the sample                   | `List[str]`           |
+
+There is a python script, `prepare_sample_sheet.py` that makes this JSON given a Duke Sequencing demulitplexing report. 
 
 ### Running the workflow
 After completing the configuration steps, the workflow is ready to be run. 
@@ -98,7 +101,6 @@ Example directory structure:
 ├── wolb-cov-workflow/
 │   ├── config/
 │   │   ├── config.yaml
-│   │   ├── resources.yaml
 │   │   └── samples.csv
 │   └── workflow/
 │       ├── envs
@@ -109,7 +111,6 @@ Example directory structure:
     ├── your-data
     └── config/
         ├── config.yaml
-        ├── resources.yaml
         └── samples.csv
 ```
 
