@@ -10,7 +10,7 @@ rule find_chimeras:
 rule view_mappability:
     input:
         bam="results/recomb/chimeras/raw/{sample}.bam",
-        mappability=f"results/mappability/{{e}}/min_{config['mappability']['score_cutoff']}_map.bed"
+        mappability=get_mappability_bed
     output:
         filtered="results/recomb/chimeras/mappable/{e}/{sample}.bam",
     conda:
@@ -19,6 +19,21 @@ rule view_mappability:
         """
         samtools index {input.bam}
         samtools view -h --region-file {input.mappability} {input.bam} | grep -v -e 'XA:Z:' -e 'SA:Z:' | samtools view -bh - |
+        samtools sort -n - > {output.filtered}
+        """
+
+rule view_mappability2:
+    input:
+        bam="results/recomb/chimeras/raw/{sample}.bam",
+        mappability=get_mappability_bed
+    output:
+        filtered="results/recomb/chimeras/mappable2/{e}/{sample}.bam",
+    conda:
+        "../envs/env.yaml"
+    shell:
+        """
+        samtools index {input.bam}
+        samtools view -h --region-file {input.mappability} {input.bam} | samtools view -bh - |
         samtools sort -n - > {output.filtered}
         """
 
@@ -42,8 +57,8 @@ rule get_rid_of_unpaired:
 
 rule bamtobed:
     input:
-        bam="results/recomb/{e}/chimeras/final/{sample}.bam",
-        bai="results/recomb/{e}/chimeras/final/{sample}.bam.bai",
+        bam="results/recomb/chimeras/final/{e}/{sample}.bam",
+        bai="results/recomb/chimeras/final/{e}/{sample}.bam.bai",
     output:
         bed="results/recomb/{e}/bambed/{sample}.bed",
     shell:

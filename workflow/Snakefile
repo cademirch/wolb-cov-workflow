@@ -3,18 +3,20 @@ configfile: "config/config.yaml"
 
 include: "rules/common.smk"
 include: "rules/reference.smk"
+include: "rules/recomb.smk"
 
 
 rule all:
     input:
-        csv=expand("results/csv/coverages_{e}.csv", e=config["mappability"]["e_vals"])
-
+        csv=expand("results/csv/coverages_{e}.csv", e=config["mappability"]["e_vals"]),
+        chimeras=expand("results/recomb/chimeras/raw/{sample}.bam", sample=mixed_ids),
+        stats=expand("results/bams/stats/{sample}.txt", sample=mixed_ids)
 rule create_cov_csv:
     input:
-        depths=expand(
+        depths=ancient(expand(
             "results/depths/{{e}}/{sample}.mosdepth.summary.txt",
             sample=sampleids,
-        ),
+        )),
         dedup_stats=expand(
             "results/bams/flagstat/{sample}_algnstats.txt",
             sample=sampleids,
@@ -99,6 +101,7 @@ rule dedup:
         """
 
 
+
 rule filter_bam:
     input:
         bam=ancient("results/bams/dedup/{sample}.bam"),
@@ -106,6 +109,7 @@ rule filter_bam:
     output:
         bam=temp("results/bams/filtered/{sample}.bam"),
         bam_index=temp("results/bams/filtered/{sample}.bam.bai"),
+        stats="results/bams/stats/{sample}.txt"
     log:
         "logs/filter_bam/{sample}.txt",
     params:
@@ -116,17 +120,40 @@ rule filter_bam:
         """
         samtools view -h -q{params.min_mapq} {input.bam} 2> {log} | \
         grep -v -e 'XA:Z:' -e 'SA:Z:' 2>> {log} | \
-        samtools view -b 2>> {log} > {output.bam} && samtools index {output.bam} 2>> {log}
+        samtools view -b 2>> {log} > {output.bam} && \
+        samtools index {output.bam} 2>> {log} && \
+        samtools stat -d {output.bam} > {output.stats} 2>> {log}
         """
+
+
+
+
+
+rule pileup:
+    input:
+        unpack(ancient(get_combined_genome)),
+        bed = ancient(get_pileup_bed),
+        bam = "results/bams/filtered/{sample}.bam"
+    output:
+        "results/pileups/{sample}.pileup.gz"
+    conda:
+        "envs/env.yaml"
+    log:
+        "logs/pileup/{sample}.txt",
+    shell:
+        "samtools mpileup --reference {input.ref} -l {input.bed} {input.bam} | gzip > {output} 2> {log}"
+
 
 
 rule mosdepth:
     input:
-        bam="results/bams/filtered/{sample}.bam",
-        bam_index="results/bams/filtered/{sample}.bam.bai",
-        bed=get_mappability_bed
+        bam=ancient("results/bams/filtered/{sample}.bam"),
+        bam_index=ancient("results/bams/filtered/{sample}.bam.bai"),
+        bed=ancient(get_mappability_bed)
     output:
         summary="results/depths/{e}/{sample}.mosdepth.summary.txt",
+        per_base="results/depths/{e}/{sample}.per-base.bed.gz",
+        idx="results/depths/{e}/{sample}.per-base.bed.gz.csi"
     shadow: "minimal"
     log:
         "logs/mosdepth/{e}/{sample}.txt",
@@ -136,7 +163,7 @@ rule mosdepth:
         "envs/env.yaml"
     shell:
         """
-        mosdepth --by {input.bed} -F 1024 -n {params.prefix} {input.bam}
+        mosdepth --by {input.bed} -F 1024 {params.prefix} {input.bam}
         """
 
 

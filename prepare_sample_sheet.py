@@ -51,7 +51,26 @@ def get_read_names(
     return pd.Series([str(r1), str(r2)], index=["read1", "read2"])
 
 
-def main(file: Path, reads_dir: Path):
+def get_read_names_no_sample_num(
+    sample_id: str, lane: int, files: list[Path]
+) -> pd.Series:
+
+    found = [
+        f.resolve() for f in files if sample_id in f.name and f"L00{lane}" in f.name
+    ]
+    if len(found) != 2:
+        print(
+            f"Expected 2 files but found {len(found)} for sample {sample_id} in lane {lane}: {found}",
+            file=sys.stderr,
+        )
+        return None, None
+    # Assuming the files are named such that read 1 and read 2 can be differentiated by R1 and R2
+    read1 = [str(f) for f in found if "_R1_" in f.name][0]
+    read2 = [str(f) for f in found if "_R2_" in f.name][0]
+    return read1, read2
+
+
+def main(file: Path, reads_dir: Path, ignore_sample_numbers: bool):
     # file must start with seq order id (4 digits)
     cols_to_keep = ["SampleID", "Lane", "# Reads", "Barcode"]
     df = pd.read_csv(file)
@@ -66,6 +85,7 @@ def main(file: Path, reads_dir: Path):
         df = df[df["# Reads"] > 0]
 
     unique_sample_ids = df.drop_duplicates(subset="SampleID").reset_index(drop=True)
+
     unique_sample_ids["sample_number"] = range(1, len(unique_sample_ids) + 1)
 
     sample_number_mapping = unique_sample_ids.set_index("SampleID")[
@@ -73,13 +93,19 @@ def main(file: Path, reads_dir: Path):
     ].to_dict()
 
     df["sample_number"] = df["SampleID"].map(sample_number_mapping)
-
-    df[["read1", "read2"]] = df.apply(
-        lambda x: get_read_names(
-            x["SampleID"], x["Lane"], x["sample_number"], reads_dir
-        ),
-        axis=1,
-    )
+    if ignore_sample_numbers:
+        files = list(reads_dir.glob("*.fastq.gz"))
+        for index, row in df.iterrows():
+            reads = get_read_names_no_sample_num(row["SampleID"], row["Lane"], files)
+            df.at[index, "read1"] = reads[0]
+            df.at[index, "read2"] = reads[1]
+    else:
+        df[["read1", "read2"]] = df.apply(
+            lambda x: get_read_names(
+                x["SampleID"], x["Lane"], x["sample_number"], reads_dir
+            ),
+            axis=1,
+        )
 
     df["host"] = df["SampleID"].apply(get_host)
     df["infection"] = df["SampleID"].apply(get_infection)
@@ -90,7 +116,7 @@ def main(file: Path, reads_dir: Path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "demux_csv",
+        "demux_csv_path",
         type=Path,
         help="Path to the demux CSV file",
     )
@@ -99,7 +125,13 @@ if __name__ == "__main__":
         type=Path,
         help="Path to the directory where reads are stored",
     )
+    parser.add_argument(
+        "ignore_samp_num",
+        type=bool,
+        help="ignore sample nums for file matching",
+        default=False,
+    )
 
     args = parser.parse_args()
 
-    main(args.demux_csv_path, args.reads_dir_path)
+    main(args.demux_csv_path, args.reads_dir_path, args.ignore_samp_num)

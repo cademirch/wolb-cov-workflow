@@ -8,7 +8,8 @@ from snakemake.exceptions import WorkflowError
 
 samples = pd.read_json(config["sample_sheet"], orient="records")  # noqa: F821
 sampleids = samples["SampleID"].unique().tolist()
-
+mixed = samples[samples['infection'].apply(lambda x: isinstance(x, list) and len(x) > 1)]
+mixed_ids = mixed["SampleID"].unique().tolist()
 
 def get_combined_genome_name(wc):
     combined = []
@@ -31,6 +32,9 @@ def get_combined_genome(wc):
     }
     return d
 
+def get_pileup_bed(wc):
+    combined = get_combined_genome_name(wc)
+    return f"data/bed/{combined}.bed"
 
 def get_single_references(wc):
     genomes = wc.genome.split("-")

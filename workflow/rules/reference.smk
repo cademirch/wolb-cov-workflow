@@ -11,7 +11,7 @@ rule combine_references:
 
 rule index_reference:
     input:
-        "data/combined_genomes/{genome}.fa"
+        ancient("data/combined_genomes/{genome}.fa")
     output:
         multiext("data/combined_genomes/{genome}.fa", ".fai", ".bwt", ".pac", ".ann", ".amb", ".sa"),
     log:
@@ -24,10 +24,38 @@ rule index_reference:
         bwa index {input} &>> {log}
         """
 
+rule bed_for_pileup:
+    """
+    Makes region bed of just wolbachia genomes for pileup
+    """
+    input:
+        genome = ancient("data/combined_genomes/{genome}.fa.fai")
+    output:
+        bed = "data/bed/{genome}.bed"
+    run:
+        symbionts = config["roles"]["symbionts"]
+        symbiont_chroms = []
+        for k,v in config["coverage_groups"].items():
+            if k in symbionts:
+                symbiont_chroms.extend(v)
+        print(symbiont_chroms)
+        lines = []
+        with open(input.genome, "r") as f:
+            for line in f:
+                line = line.strip().split()
+                if line[0] in symbiont_chroms:
+                    lines.append(line)
+        print(lines)
+        with open(output.bed, "w") as out:
+            for l in lines:
+                print(l[0], 0, l[1], sep="\t", file=out)
+
+
+
 
 rule mappability_index:
     input:
-        "data/combined_genomes/{genome}.fa"
+        ancient("data/combined_genomes/{genome}.fa")
     output:
         index_dir=directory("data/mappability/{genome}/index"),
     log:
@@ -42,7 +70,7 @@ rule mappability_index:
 
 rule mappability:
     input:
-        index_dir="data/mappability/{genome}/index",
+        index_dir=ancient("data/mappability/{genome}/index"),
     output:
         bedgraph=temp(
             "results/mappability/{genome}/{e}/{genome}.genmap.bedgraph"
