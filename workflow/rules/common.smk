@@ -49,17 +49,32 @@ def get_mappability_bed(wc):
 
 
 def get_reads(wc):
-    read_1 = samples.loc[samples["SampleID"] == wc.sample]["read1"].tolist()
-    read_2 = samples.loc[samples["SampleID"] == wc.sample]["read2"].tolist()
-    if len(read_1) == 1 and len(read_2) == 1:
-        return {"read_1": read_1, "read_2": read_2}
+    """
+    Get read files for a sample. If multiple read pairs exist,
+    return the path to the merged files, otherwise return the direct paths.
+    """
+    read1_files = samples.loc[samples["SampleID"] == wc.sample]["read1_files"].iloc[0]
+    read2_files = samples.loc[samples["SampleID"] == wc.sample]["read2_files"].iloc[0]
+    
+    if len(read1_files) == 1 and len(read2_files) == 1:
+        # If only one pair of reads, return them directly
+        return {"read_1": read1_files[0], "read_2": read2_files[0]}
     else:
-        return {"read_1": "results/merged_fastqs/{sample}_R1.fq.gz", "read_2": "results/merged_fastqs/{sample}_R1.fq.gz"}
+        # If multiple pairs, return the path to the merged files
+        return {
+            "read_1": f"results/merged_fastqs/{wc.sample}_R1.fq.gz", 
+            "read_2": f"results/merged_fastqs/{wc.sample}_R2.fq.gz"
+        }
 
 def get_reads_to_merge(wc):
-    read_1 = samples.loc[samples["SampleID"] == wc.sample]["read1"].tolist()
-    read_2 = samples.loc[samples["SampleID"] == wc.sample]["read2"].tolist()
-    return {"read_1": read_1, "read_2": read_2}
+    """
+    Get all read files for a sample to be merged.
+    Each read1 file corresponds to the read2 file at the same index.
+    """
+    read1_files = samples.loc[samples["SampleID"] == wc.sample]["read1_files"].iloc[0]
+    read2_files = samples.loc[samples["SampleID"] == wc.sample]["read2_files"].iloc[0]
+    
+    return {"read_1": read1_files, "read_2": read2_files}
 
 def get_octomom(wc):
     s = samples.loc[samples["infection"] == "wMel"]

@@ -6,11 +6,19 @@ include: "rules/reference.smk"
 include: "rules/recomb.smk"
 
 
+def get_output(wc):
+    output = []
+    if config["recombination"]:
+        output.extend(expand("results/recomb/chimeras/raw/{sample}.bam", sample=mixed_ids))
+    output.extend(expand("results/csv/coverages_{e}.csv", e=config["mappability"]["e_vals"]))
+    output.extend(expand("results/bams/stats/{sample}.txt", sample=mixed_ids))
+    
+    return output
+
 rule all:
     input:
-        csv=expand("results/csv/coverages_{e}.csv", e=config["mappability"]["e_vals"]),
-        chimeras=expand("results/recomb/chimeras/raw/{sample}.bam", sample=mixed_ids),
-        stats=expand("results/bams/stats/{sample}.txt", sample=mixed_ids)
+        get_output
+
 rule create_cov_csv:
     input:
         depths=ancient(expand(
@@ -24,7 +32,7 @@ rule create_cov_csv:
     output:
         csv="results/csv/coverages_{e}.csv",
     params:
-        groups=config["coverage_groups"],
+        groups=config["genome_contigs_for_depth_calculation"],
         roles=config["roles"],
         sample_sheet=config["sample_sheet"]
     script:

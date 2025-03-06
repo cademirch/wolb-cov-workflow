@@ -103,7 +103,7 @@ def main():
         print(sample_id, host, infection, genomes)
         genome_groups = dict((k, groups[k]) for k in genomes)
 
-        out = {"SampleID": sample_id, "sequencing_run": row["sequencing_order_id"]}
+        out = {"SampleID": sample_id}
         out.update(parse_mosdepth(Path(depth_file), genome_groups, roles))
         out.update(parse_flagstat(Path(flagstat_file)))
         dicts.append(out)
