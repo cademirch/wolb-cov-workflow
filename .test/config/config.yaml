@@ -1,6 +1,6 @@
 ## Required config files ##
 sample_sheet: "./config/samples.json"
-
+recombination: False
 
 ## Reference genome path ##
 ### MUST BE UNCOMPRESSED (blame genmap, not me) ###
@@ -10,7 +10,7 @@ genome_paths:
   wri: "data/wri.fna"
 
 ## Host and infection accessions ##
-coverage_groups:
+genome_contigs_for_depth_calculation:
   ## Each key is a group that mean cov will be calculated for. 
   ## Value should be the contig names in the reference genome. Must be list of strings.
   dmel: ["dmel_chrom"]
